@@ -15,12 +15,19 @@ LOCAL_DATA_DIR = BASE_DIR / "data"
 DB_PATH = BASE_DIR / "processed" / "betting_data.db"
 DROPBOX_TARGET_FOLDER = "/93121074"
 
+def safe_print(*args, **kwargs):
+    try:
+        print(*args, **kwargs)
+    except OSError:
+        pass
+
+
 def get_latest_db_month():
     """去 SQLite 查詢目前最新的資料落在哪個月份 (例如回傳 '2026-04')"""
     if not DB_PATH.exists():
         return None
     try:
-        conn = sqlite3.connect(DB_PATH)
+        conn = sqlite3.connect(DB_PATH, timeout=30)
         cur = conn.cursor()
         cur.execute("SELECT MAX(date) FROM fact_daily_summary")
         max_date = cur.fetchone()[0]
@@ -63,9 +70,9 @@ def sync_dropbox_folder(dbx_folder_path: str = DROPBOX_TARGET_FOLDER):
     latest_db_month = get_latest_db_month()
     
     try:
-        print(f"正在連線至 Dropbox，檢查是否有新資料...")
+        safe_print(f"正在連線至 Dropbox，檢查是否有新資料...")
         if latest_db_month:
-            print(f"👉 資料庫目前最新進度：{latest_db_month}，歷史舊檔案將被直接忽略。")
+            safe_print(f"👉 資料庫目前最新進度：{latest_db_month}，歷史舊檔案將被直接忽略。")
             
         result = dbx.files_list_folder(dbx_folder_path)
         
@@ -89,30 +96,30 @@ def sync_dropbox_folder(dbx_folder_path: str = DROPBOX_TARGET_FOLDER):
                     if remote_mtime <= local_mtime:
                         continue
                     
-                print(f"發現新資料，正在下載: {entry.name} ... ", end="", flush=True)
+                safe_print(f"發現新資料，正在下載: {entry.name} ... ", end="", flush=True)
                 dbx.files_download_to_file(str(local_file_path), entry.path_display)
                 
                 # 下載後，手動把本地檔案的修改時間，同步成 Dropbox 上的時間，確保下次比對精準
                 os.utime(local_file_path, (entry.server_modified.timestamp(), entry.server_modified.timestamp()))
                 
-                print("完成!")
+                safe_print("完成!")
                 downloaded_files.append(local_file_path)
                 
         if downloaded_files:
-            print(f"✅ 共成功同步了 {len(downloaded_files)} 個新檔案。")
+            safe_print(f"✅ 共成功同步了 {len(downloaded_files)} 個新檔案。")
         else:
-            print(f"✅ 資料庫已是最新，沒有需要下載的檔案。")
+            safe_print(f"✅ 資料庫已是最新，沒有需要下載的檔案。")
             
         return downloaded_files
                 
     except AuthError as e:
-        print("❌ 認證失敗！請確認 DROPBOX_ACCESS_TOKEN 是否正確或已過期。")
+        safe_print("❌ 認證失敗！請確認 DROPBOX_ACCESS_TOKEN 是否正確或已過期。")
         raise e
     except Exception as e:
-        print(f"❌ 發生錯誤: {e}")
+        safe_print(f"❌ 發生錯誤: {e}")
         raise e
 
 if __name__ == "__main__":
-    print("=== 開始同步 Dropbox 資料 ===")
+    safe_print("=== 開始同步 Dropbox 資料 ===")
     sync_dropbox_folder()
-    print("=== 同步結束 ===")
+    safe_print("=== 同步結束 ===")

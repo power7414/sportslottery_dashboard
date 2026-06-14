@@ -20,16 +20,31 @@
 - Python 3.10+
 - `.env` 檔案配置 (請參考 `.env.example`，需填寫 Dropbox Token 等資訊)
 
-### 2. 安裝相依套件
+### 2. 建立並啟動虛擬環境（建議）
+
 ```bash
-pip install -r requirements.txt
+# 建立虛擬環境（只需執行一次）
+python3 -m venv venv
+
+# 啟動虛擬環境（每次開發前執行）
+source venv/bin/activate
 ```
-*(如果沒有 requirements.txt，請安裝：`streamlit pandas plotly dropbox openpyxl`)*
+
+> ⚠️ macOS / Linux 請用 `source venv/bin/activate`；Windows 請用 `venv\Scripts\activate`。
+>
+> 啟動成功後，terminal 提示符前面會出現 `(venv)` 字樣。若要離開環境，執行 `deactivate`。
+
+### 3. 安裝相依套件
+```bash
+pip install streamlit pandas plotly dropbox openpyxl
+```
 
 ### 3. 啟動 Dashboard
 ```bash
-streamlit run app.py
+python3 -m streamlit run app.py
 ```
+> ⚠️ 請勿使用 `python3 streamlit run app.py`（錯誤）或單獨的 `streamlit run app.py`（若 streamlit 不在 PATH 中會失敗）。
+>
 > 系統啟動時，會自動檢查 Dropbox 雲端是否有新的 Excel 報表，若有將會自動執行增量更新。
 
 ## 📂 資料夾結構說明
@@ -41,4 +56,11 @@ streamlit run app.py
 *   `data/` & `member/`：原始 Excel 與 CSV 檔案備份。
 
 > **💡 開發架構與進階資訊：**
-> 請參閱 `DASHBOARD_PLAN.md` 以了解更詳細的模組設計、AI 開發準則與資料庫架構。
+> 請參閱 [DEVELOPER_GUIDE.md](file:///Users/pkwu/Documents/運彩投注額結算/DEVELOPER_GUIDE.md) 以了解更詳細的模組設計、AI 開發準則與資料庫架構。
+
+## 🤖 AI 協同開發規範
+
+本專案引進以下三核心文件以引導 AI 進行精準開發：
+*   [AGENT.md](file:///Users/pkwu/Documents/運彩投注額結算/AGENT.md)：共同頻率確認文件，記錄本專案的架構共識、UI 風格、核心雷區與業務邏輯。
+*   [PROGRESS.md](file:///Users/pkwu/Documents/運彩投注額結算/PROGRESS.md)：專案開發里程碑，追蹤已驗證之功能與未來規劃。
+*   [TODO.md](file:///Users/pkwu/Documents/運彩投注額結算/TODO.md)：當前開發目標與具體執行清單。

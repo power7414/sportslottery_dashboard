@@ -9,9 +9,13 @@ DATA_DIR      = BASE_DIR / 'data'
 PROCESSED_DIR = BASE_DIR / 'processed'
 DB_PATH       = PROCESSED_DIR / 'betting_data.db'
 
-# 把根目錄加入 sys.path 以使用 calculate_betting_final.py 的已驗證邏輯
-sys.path.insert(0, str(BASE_DIR))
-from calculate_betting_final import calculate_monthly_betting
+from src.calculate_betting_final import calculate_monthly_betting
+
+def safe_print(*args, **kwargs):
+    try:
+        print(*args, **kwargs)
+    except OSError:
+        pass
 
 
 # ────────────────────────────────────────────────────────────────
@@ -39,7 +43,8 @@ def extract_year_month(filename: str):
 # ────────────────────────────────────────────────────────────────
 def init_database() -> sqlite3.Connection:
     PROCESSED_DIR.mkdir(exist_ok=True)
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(DB_PATH, timeout=30)
+    conn.execute("PRAGMA journal_mode=WAL;")
     cur  = conn.cursor()
 
     # 表一：個別會員每日投注明細
@@ -101,7 +106,7 @@ def insert_member_bets(file_path: Path, conn: sqlite3.Connection):
         records,
     )
     conn.commit()
-    print(f"  ✅ {file_path.name} → 會員明細 {len(records)} 筆")
+    safe_print(f"  ✅ {file_path.name} → 會員明細 {len(records)} 筆")
 
 
 # ────────────────────────────────────────────────────────────────
@@ -109,7 +114,7 @@ def insert_member_bets(file_path: Path, conn: sqlite3.Connection):
 # ── 完全沿用 calculate_betting_final 的跨月補充邏輯，確保數字正確 ──
 # ────────────────────────────────────────────────────────────────
 def build_daily_summary(conn: sqlite3.Connection):
-    print("\n🔄 使用 calculate_betting_final 邏輯重建每日彙整表...")
+    safe_print("\n🔄 使用 calculate_betting_final 邏輯重建每日彙整表...")
 
     # 呼叫已驗證的計算邏輯（含跨月補充）
     all_data = calculate_monthly_betting(str(DATA_DIR))
@@ -136,7 +141,7 @@ def build_daily_summary(conn: sqlite3.Connection):
         records,
     )
     conn.commit()
-    print(f"  ✅ 共寫入 {len(records)} 天的彙整資料\n")
+    safe_print(f"  ✅ 共寫入 {len(records)} 天的彙整資料\n")
 
 
 def update_specific_files(file_paths: list):
@@ -144,70 +149,20 @@ def update_specific_files(file_paths: list):
     if not file_paths:
         return
         
-    print(f"\n🔄 發現 {len(file_paths)} 個新檔案，開始極速增量更新...")
-    conn = sqlite3.connect(DB_PATH)
-    
-    from calculate_betting_final import process_excel_file
-    import calendar
+    safe_print(f"\n🔄 發現 {len(file_paths)} 個新檔案，開始極速增量更新...")
+    conn = sqlite3.connect(DB_PATH, timeout=30)
+    conn.execute("PRAGMA journal_mode=WAL;")
     
     for fp in file_paths:
         fp_path = Path(fp)
-        # 1. 更新個人明細
+        # 1. 增量更新個人明細
         insert_member_bets(fp_path, conn)
         
-        # 2. 僅針對單一檔案解析每日彙整與跨月資料
-        print(f"  📊 解析彙整資料：{fp_path.name}")
-        result = process_excel_file(fp_path)
-        if not result:
-            continue
-            
-        year = result['year']
-        month = result['month']
-        records = []
-        
-        # 當月每日資料
-        for day, d in result['daily'].items():
-            date_str = f"{year}-{month}-{day:02d}"
-            records.append((
-                date_str,
-                d['同意投注額'],
-                d['同意人數'],
-                d['不同意投注額'],
-                d['不同意人數'],
-            ))
-            
-        # 跨月資料（屬於上個月月底）
-        if result['last_month_final']:
-            d = result['last_month_final']
-            prev_month = int(month) - 1
-            prev_year = int(year)
-            if prev_month == 0:
-                prev_month = 12
-                prev_year -= 1
-                
-            days_in_prev_month = calendar.monthrange(prev_year, prev_month)[1]
-            date_str = f"{prev_year}-{prev_month:02d}-{days_in_prev_month:02d}"
-            
-            records.append((
-                date_str,
-                d['同意投注額'],
-                d['同意人數'],
-                d['不同意投注額'],
-                d['不同意人數'],
-            ))
-            
-        # 3. 使用 UPSERT (INSERT OR REPLACE) 針對影響的日期進行更新
-        cur = conn.cursor()
-        cur.executemany(
-            """INSERT OR REPLACE INTO fact_daily_summary
-               (date, agreed_amount, agreed_people, disagreed_amount, disagreed_people)
-               VALUES (?,?,?,?,?)""",
-            records,
-        )
-        conn.commit()
+    # 2. 重新執行全域的每日彙整重建，確保「跨月補點」數據完全正確
+    build_daily_summary(conn)
     
     conn.close()
-    print("✅ 增量更新完成！速度大幅提升！\n")
+    safe_print("✅ 增量更新完成！\n")
 
 
 # ────────────────────────────────────────────────────────────────
@@ -216,23 +171,45 @@ def update_specific_files(file_paths: list):
 if __name__ == "__main__":
     import glob
 
-    print("=== 🚀 開始建立 / 更新資料庫 ===\n")
-
-    if DB_PATH.exists():
-        DB_PATH.unlink()
-        print("🗑️  已刪除舊資料庫，重新建立...\n")
+    safe_print("=== 🚀 開始建立 / 更新資料庫 ===\n")
 
     conn = init_database()
+    
+    # 僅清空並重新建立投注相關資料表，防止誤刪其他（如財務、會員主檔）資料表
+    cur = conn.cursor()
+    cur.execute("DROP TABLE IF EXISTS fact_daily_bets;")
+    cur.execute("DROP TABLE IF EXISTS fact_daily_summary;")
+    conn.commit()
+    
+    # 重新建立投注相關資料表
+    cur.execute('''
+        CREATE TABLE IF NOT EXISTS fact_daily_bets (
+            date       TEXT,
+            member_id  TEXT,
+            bet_amount REAL,
+            PRIMARY KEY (date, member_id)
+        )
+    ''')
+    cur.execute('''
+        CREATE TABLE IF NOT EXISTS fact_daily_summary (
+            date              TEXT PRIMARY KEY,
+            agreed_amount     REAL,
+            agreed_people     INTEGER,
+            disagreed_amount  REAL,
+            disagreed_people  INTEGER
+        )
+    ''')
+    conn.commit()
 
     # Step 1：寫入個別會員明細
-    print("📋 Step 1：寫入個別會員投注明細")
+    safe_print("📋 Step 1：寫入個別會員投注明細")
     for fp in sorted(glob.glob(str(DATA_DIR / '*.xlsx'))):
-        print(f"  📄 {Path(fp).name}")
+        safe_print(f"  📄 {Path(fp).name}")
         insert_member_bets(Path(fp), conn)
 
     # Step 2：用已驗證邏輯寫入每日彙整（含跨月補充，數字與原邏輯一致）
-    print("\n📊 Step 2：重建每日彙整表（同意 + 不同意第三人）")
+    safe_print("\n📊 Step 2：重建每日彙整表（同意 + 不同意第三人）")
     build_daily_summary(conn)
 
     conn.close()
-    print(f"=== ✅ 完成！資料庫位於：{DB_PATH} ===")
+    safe_print(f"=== ✅ 完成！資料庫位於：{DB_PATH} ===")
