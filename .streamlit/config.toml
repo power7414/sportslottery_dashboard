@@ -1,0 +1,49 @@
+[theme]
+# ── TailAdmin 深色主題 (Native Streamlit Config) ──────────────────
+# 對齊 free-react-tailwind-admin-dashboard 的視覺語言
+# 參考 Streamlit 官方 theming 文件所有支援的原生設定項目
+
+# 基底：繼承自 Streamlit 深色主題
+base = "dark"
+
+# 主色：TailAdmin brand-500，自動套用至按鈕 hover、Focus 光暈、選中態
+primaryColor = "#465fff"
+
+# 全域底色：TailAdmin gray-900
+backgroundColor = "#101828"
+
+# 次要底色：用於輸入框背景、側邊欄 (Streamlit 會自動交換)、st.container
+secondaryBackgroundColor = "#1d2939"
+
+# 全域文字
+textColor = "#f1f5f9"
+
+# 連結顏色
+linkColor = "#7b93ff"
+linkUnderline = false
+
+# 圓角：對齊 TailAdmin 的 rounded-2xl (16px)
+baseRadius = "0.75rem"
+buttonRadius = "0.5rem"
+
+# 邊框：讓所有 widget 邊框顯示，並設定顏色
+showWidgetBorder = true
+borderColor = "#344054"
+dataframeBorderColor = "#344054"
+dataframeHeaderBackgroundColor = "#1d2939"
+
+# 圖表色系：對齊 TailAdmin 色票（Plotly/Altair 會自動套用）
+chartCategoricalColors = ["#465fff", "#0ba5ec", "#12b76a", "#f79009", "#f04438", "#7b93ff"]
+
+# 狀態色票：對齊 TailAdmin 語義顏色
+greenColor = "#12b76a"
+blueColor = "#0ba5ec"
+orangeColor = "#f79009"
+redColor = "#f04438"
+violetColor = "#7b93ff"
+
+[theme.sidebar]
+# 側邊欄：稍微比主背景深，強化分層感
+backgroundColor = "#0d1526"
+secondaryBackgroundColor = "#101828"
+primaryColor = "#465fff"

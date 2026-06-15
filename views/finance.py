@@ -262,9 +262,18 @@ with st.container(border=True):
         }
     )
 
-    # 提供儲存按鈕
-    col_btn1, col_btn2 = st.columns([8, 2])
+    # 提供儲存與匯出按鈕
+    col_btn1, col_btn2, col_btn3 = st.columns([6, 2, 2])
     with col_btn2:
+        csv_data = edited_df.to_csv(index=False, encoding='utf-8-sig')
+        st.download_button(
+            label="匯出 CSV 備份",
+            data=csv_data,
+            file_name=f"finance_ledger_{datetime.date.today().strftime('%Y%m%d')}.csv",
+            mime="text/csv",
+            use_container_width=True
+        )
+    with col_btn3:
         if st.button("儲存表格所有變更", type="primary", use_container_width=True):
             # 將欄位名稱改回英文對應資料庫
             edited_df.columns = ['date', 'type', 'category', 'amount', 'note', 'description']

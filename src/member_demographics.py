@@ -23,7 +23,7 @@ def render_member_demographics():
 
     @st.cache_data
     def load_and_process_data():
-        # Force cache invalidation 2026-05-07
+        # Force cache invalidation 2026-06-14
         conn = get_db_connection()
         dim = pd.read_sql("SELECT * FROM dim_member", conn, dtype={'phone': str})
 
@@ -278,7 +278,7 @@ def render_member_demographics():
         with tab_all:
             st.caption("提示：您可以直接在下方表格內雙擊修改文字，或是滑到最下方 `+` 新增列、選取後按 `Delete` 刪除。完成後請點擊「儲存表格變更」。")
 
-            col_search, col_save = st.columns([7, 3])
+            col_search, col_export, col_save = st.columns([6, 2, 2])
             with col_search:
                 search_query = st.text_input("快速搜尋會員", placeholder="請輸入代號、管道、電話等關鍵字...")
 
@@ -301,6 +301,19 @@ def render_member_demographics():
                     )
                 }
             )
+
+            with col_export:
+                st.write("") # 排版對齊用
+                st.write("")
+                import datetime as dt
+                csv_data = edited_members.to_csv(index=False, encoding='utf-8-sig')
+                st.download_button(
+                    label="匯出 CSV 備份",
+                    data=csv_data,
+                    file_name=f"member_list_{dt.date.today().strftime('%Y%m%d')}.csv",
+                    mime="text/csv",
+                    use_container_width=True
+                )
 
             with col_save:
                 st.write("") # 排版對齊用
