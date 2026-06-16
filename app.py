@@ -39,7 +39,42 @@ else:
 
 
 # ── 建立自訂導覽列 (Sidenav) ───────────────────────────────────────────
-user_email = st.experimental_user.email
+def get_user_email():
+    # 1. 嘗試從 st.user 取得 (Streamlit 1.37.0+)
+    try:
+        if hasattr(st, "user") and st.user:
+            if hasattr(st.user, "email") and st.user.email:
+                return st.user.email
+            if hasattr(st.user, "get"):
+                val = st.user.get("email")
+                if val: return val
+    except:
+        pass
+
+    # 2. 嘗試從 st.experimental_user 取得 (舊版 Streamlit)
+    try:
+        if hasattr(st, "experimental_user") and st.experimental_user:
+            if hasattr(st.experimental_user, "email") and st.experimental_user.email:
+                return st.experimental_user.email
+            if hasattr(st.experimental_user, "get"):
+                val = st.experimental_user.get("email")
+                if val: return val
+    except:
+        pass
+
+    # 3. 嘗試從 HTTP 標頭取得 (Streamlit Cloud 自動帶入的身份標頭)
+    try:
+        headers = st.context.headers
+        if headers:
+            email = headers.get("X-Streamlit-User")
+            if email:
+                return email
+    except:
+        pass
+
+    return None
+
+user_email = get_user_email()
 is_local = not user_email
 
 # 權限分流判斷
