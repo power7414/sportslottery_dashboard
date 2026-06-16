@@ -39,15 +39,26 @@ else:
 
 
 # ── 建立自訂導覽列 (Sidenav) ───────────────────────────────────────────
-# 將所有的畫面模組註冊進 st.navigation
-pages = [
-    st.Page("views/dashboard.py", title="首頁", icon=":material/home:"),
-    st.Page("views/betting_analysis.py", title="投注額趨勢分析", icon=":material/monitoring:"),
-    st.Page("views/members_crm.py", title="會員管道與資料維護", icon=":material/groups:"),
-    st.Page("views/members_rfm.py", title="會員狀態與流失分析", icon=":material/health_and_safety:"),
-    st.Page("views/finance.py", title="財務紀錄", icon=":material/account_balance:"),
-    st.Page("views/demo_tailadmin.py", title="設計展示 (Demo)", icon=":material/palette:"),
-]
+user_email = st.experimental_user.email
+is_local = not user_email
+
+# 權限分流判斷
+if not is_local and user_email == "b10703023@gmail.com":
+    # 僅限首頁 (Viewer 權限)
+    pages = [
+        st.Page("views/dashboard.py", title="首頁", icon=":material/home:"),
+    ]
+else:
+    # 本地端或其它 Email (如 enoch41228@gmail.com, schumichu0925@gmail.com, charliem713ac@gmail.com)
+    # 均給予完整 Admin 權限
+    pages = [
+        st.Page("views/dashboard.py", title="首頁", icon=":material/home:"),
+        st.Page("views/betting_analysis.py", title="投注額趨勢分析", icon=":material/monitoring:"),
+        st.Page("views/members_crm.py", title="會員管道與資料維護", icon=":material/groups:"),
+        st.Page("views/members_rfm.py", title="會員狀態與流失分析", icon=":material/health_and_safety:"),
+        st.Page("views/finance.py", title="財務紀錄", icon=":material/account_balance:"),
+        st.Page("views/demo_tailadmin.py", title="設計展示 (Demo)", icon=":material/palette:"),
+    ]
 
 pg = st.navigation(pages)
 pg.run()
