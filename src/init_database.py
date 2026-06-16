@@ -1,4 +1,4 @@
-import sqlite3
+i４mport sqlite3
 import pandas as pd
 from pathlib import Path
 import sys
@@ -153,67 +153,16 @@ def update_specific_files(file_paths: list):
     conn = sqlite3.connect(DB_PATH, timeout=30)
     conn.execute("PRAGMA journal_mode=WAL;")
     
-    from src.calculate_betting_final import process_excel_file
-    import calendar
-    
     for fp in file_paths:
         fp_path = Path(fp)
         # 1. 增量更新個人明細
         insert_member_bets(fp_path, conn)
         
-        # 2. 僅針對單一檔案解析每日彙整與跨月資料
-        safe_print(f"  📊 解析彙整資料：{fp_path.name}")
-        result = process_excel_file(fp_path)
-        if not result:
-            continue
-            
-        year = result['year']
-        month = result['month']
-        records = []
-        
-        # 當月每日資料
-        for day, d in result['daily'].items():
-            date_str = f"{year}-{month}-{day:02d}"
-            records.append((
-                date_str,
-                d['同意投注額'],
-                d['同意人數'],
-                d['不同意投注額'],
-                d['不同意人數'],
-            ))
-            
-        # 跨月資料（屬於上個月月底）
-        if result['last_month_final']:
-            d = result['last_month_final']
-            prev_month = int(month) - 1
-            prev_year = int(year)
-            if prev_month == 0:
-                prev_month = 12
-                prev_year -= 1
-                
-            days_in_prev_month = calendar.monthrange(prev_year, prev_month)[1]
-            date_str = f"{prev_year}-{prev_month:02d}-{days_in_prev_month:02d}"
-            
-            records.append((
-                date_str,
-                d['同意投注額'],
-                d['同意人數'],
-                d['不同意投注額'],
-                d['不同意人數'],
-            ))
-            
-        # 3. 使用 UPSERT (INSERT OR REPLACE) 針對影響的日期進行更新
-        cur = conn.cursor()
-        cur.executemany(
-            """INSERT OR REPLACE INTO fact_daily_summary
-               (date, agreed_amount, agreed_people, disagreed_amount, disagreed_people)
-               VALUES (?,?,?,?,?)""",
-            records,
-        )
-        conn.commit()
+    # 2. 重新執行全域的每日彙整重建，確保「跨月補點」數據完全正確
+    build_daily_summary(conn)
     
     conn.close()
-    safe_print("✅ 增量更新完成！速度大幅提升！\n")
+    safe_print("✅ 增量更新完成！\n")
 
 
 # ────────────────────────────────────────────────────────────────

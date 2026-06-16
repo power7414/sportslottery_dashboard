@@ -20,17 +20,6 @@ if 'has_synced' not in st.session_state:
     start_background_sync()
 
 # 檢測背景同步狀態，進行熱加載
-if 'sync_active' not in st.session_state:
-    st.session_state.sync_active = False
-
-# 如果原本是在同步狀態，但背景執行緒已結束，主動重整網頁以更新側邊欄為「已完成」
-if st.session_state.sync_active and not SyncManager.is_running:
-    st.session_state.sync_active = False
-    st.rerun()
-
-if SyncManager.is_running:
-    st.session_state.sync_active = True
-
 if SyncManager.has_new_data:
     st.cache_data.clear()
     SyncManager.has_new_data = False
