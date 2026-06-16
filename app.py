@@ -75,17 +75,32 @@ def get_user_email():
     return None
 
 user_email = get_user_email()
-is_local = not user_email
 
-# 權限分流判斷
-if not is_local and user_email == "b10703023@gmail.com":
-    # 僅限首頁 (Viewer 權限)
+# 偵測是否在雲端運行
+import os
+is_cloud = "STREAMLIT_SERVER_ENABLE_XSRF_PROTECTION" in os.environ or os.path.exists("/mount/src")
+is_local = not is_cloud
+
+# 定義管理員 Email 清單 (您其他的信箱以及夥伴信箱)
+ADMIN_EMAILS = [
+    "enoch41228@gmail.com",
+    "schumichu0925@gmail.com",
+    "charliem713ac@gmail.com",
+    "power7414@gmail.com"  # 確保您的 Google 信箱也在此
+]
+
+# 權限判定：
+# 本地端 (is_local) 預設為 Admin 方便開發
+# 雲端 (is_cloud) 則檢查登入 Email 是否在管理員清單內，不在或未登入則限制為 Viewer 權限
+is_admin = is_local or (user_email and user_email in ADMIN_EMAILS)
+
+if not is_admin:
+    # 僅限首頁 (Viewer 權限，例如 b10703023@gmail.com 或未登入的雲端訪客)
     pages = [
         st.Page("views/dashboard.py", title="首頁", icon=":material/home:"),
     ]
 else:
-    # 本地端或其它 Email (如 enoch41228@gmail.com, schumichu0925@gmail.com, charliem713ac@gmail.com)
-    # 均給予完整 Admin 權限
+    # 管理員權限
     pages = [
         st.Page("views/dashboard.py", title="首頁", icon=":material/home:"),
         st.Page("views/betting_analysis.py", title="投注額趨勢分析", icon=":material/monitoring:"),
