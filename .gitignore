@@ -23,3 +23,6 @@ processed/betting_data_backup_before_member_sync.db
 processed/betting_data_backup_finance.db
 processed/finance_ledger_backup.csv
 now_member.csv
+
+# Excel Data Reports
+data/
